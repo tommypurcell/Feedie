@@ -52,7 +52,7 @@ const App: React.FC = () => {
                         id: nextId++,
                         platform: targetPlatform,
                         // Adapt type for video-centric platforms
-                        type: targetPlatform === 'Tiktok' ? 'Reel' : originalPost.type
+                        type: (targetPlatform === 'Tiktok' || targetPlatform === 'YouTube Shorts') ? 'Reel' : originalPost.type
                     });
                 }
             });
@@ -80,8 +80,9 @@ const App: React.FC = () => {
         />
       )}
 
-      {currentStep === 'simulation' && (
+      {currentStep === 'simulation' && config && (
         <AgentSimulation 
+          config={config}
           posts={posts} 
           onReset={() => setCurrentStep('config')} 
         />

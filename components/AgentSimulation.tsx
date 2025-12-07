@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { PostDraft, Platform } from '../types';
+import { PostDraft, Platform, WorkflowConfig } from '../types';
 import { 
   CheckCircle, 
   MessageCircle, 
@@ -22,12 +22,19 @@ import {
   Box,
   Music2,
   Search,
-  Plus
+  Plus,
+  ThumbsUp,
+  ThumbsDown,
+  Youtube,
+  Library,
+  Home,
+  Bell
 } from 'lucide-react';
 
 interface Props {
   posts: PostDraft[];
   onReset: () => void;
+  config: WorkflowConfig;
 }
 
 interface LogEntry {
@@ -68,7 +75,7 @@ const formatNumber = (num: number) => {
     return num.toString();
 };
 
-const AgentSimulation: React.FC<Props> = ({ posts, onReset }) => {
+const AgentSimulation: React.FC<Props> = ({ posts, onReset, config }) => {
   // --- STATE ---
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [conversations, setConversations] = useState<ChatThread[]>([]);
@@ -87,6 +94,14 @@ const AgentSimulation: React.FC<Props> = ({ posts, onReset }) => {
   const distinctPlatforms = Array.from(new Set(posts.map(p => p.platform)));
   const [activePlatform, setActivePlatform] = useState<Platform>(distinctPlatforms[0] || 'Instagram');
   
+  // Derived Business Details
+  const businessHandle = config.businessName 
+    ? `@${config.businessName.toLowerCase().replace(/[^a-z0-9]/g, '_')}` 
+    : '@social_agent_ai';
+  const businessInitials = config.businessName 
+    ? config.businessName.substring(0, 2).toUpperCase() 
+    : 'AI';
+
   // Ensure active platform is valid
   useEffect(() => {
     if (!distinctPlatforms.includes(activePlatform) && distinctPlatforms.length > 0) {
@@ -96,7 +111,10 @@ const AgentSimulation: React.FC<Props> = ({ posts, onReset }) => {
 
   const feedPosts = posts.filter(p => p.platform === activePlatform);
   const filteredConversations = conversations.filter(c => c.platform === activePlatform);
+  
   const isTikTok = activePlatform === 'Tiktok';
+  const isYoutube = activePlatform === 'YouTube Shorts';
+  const isImmersiveVideo = isTikTok || isYoutube;
 
   const logsEndRef = useRef<HTMLDivElement>(null);
 
@@ -303,6 +321,7 @@ const AgentSimulation: React.FC<Props> = ({ posts, onReset }) => {
       case 'Instagram': return 'from-purple-500 to-pink-500';
       case 'Tiktok': return 'from-black to-gray-800';
       case 'Threads': return 'from-black to-gray-900';
+      case 'YouTube Shorts': return 'from-red-600 to-red-800';
       default: return 'from-blue-500 to-blue-600';
     }
   };
@@ -312,6 +331,7 @@ const AgentSimulation: React.FC<Props> = ({ posts, onReset }) => {
         case 'Instagram': return <Instagram className="w-4 h-4" />;
         case 'Tiktok': return <MessageCircle className="w-4 h-4" />; 
         case 'Threads': return <Repeat className="w-4 h-4" />;
+        case 'YouTube Shorts': return <Youtube className="w-4 h-4" />;
         default: return <Activity className="w-4 h-4" />;
     }
   }
@@ -345,12 +365,12 @@ const AgentSimulation: React.FC<Props> = ({ posts, onReset }) => {
             </div>
 
             {/* Platform Switcher */}
-            <div className="flex bg-gray-900 p-1 rounded-xl border border-gray-700">
+            <div className="flex bg-gray-900 p-1 rounded-xl border border-gray-700 overflow-x-auto max-w-[90vw] md:max-w-auto">
                 {distinctPlatforms.map(p => (
                 <button
                     key={p}
                     onClick={() => setActivePlatform(p)}
-                    className={`px-4 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-2 ${
+                    className={`px-4 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-2 whitespace-nowrap ${
                     activePlatform === p 
                         ? `bg-gradient-to-r ${getPlatformColor(p)} text-white shadow-lg` 
                         : 'text-gray-400 hover:text-white hover:bg-gray-800'
@@ -364,7 +384,7 @@ const AgentSimulation: React.FC<Props> = ({ posts, onReset }) => {
 
             <button 
                 onClick={onReset}
-                className="text-xs text-red-400 hover:text-red-300 border border-red-900/50 hover:bg-red-900/20 px-3 py-2 rounded-lg transition-colors"
+                className="text-xs text-red-400 hover:text-red-300 border border-red-900/50 hover:bg-red-900/20 px-3 py-2 rounded-lg transition-colors whitespace-nowrap"
             >
                 Stop Simulation
             </button>
@@ -532,6 +552,14 @@ const AgentSimulation: React.FC<Props> = ({ posts, onReset }) => {
                        <Search className="w-5 h-5" />
                      </div>
                    </div>
+                ) : isYoutube ? (
+                    <div className="absolute top-8 left-0 w-full z-20 text-white font-bold text-sm flex justify-between items-center px-4 pt-4 drop-shadow-md">
+                     <span className="cursor-pointer font-bold tracking-tighter text-lg">Shorts</span>
+                     <div className="flex gap-4">
+                        <Search className="w-5 h-5" />
+                        <MoreHorizontal className="w-5 h-5" />
+                     </div>
+                   </div>
                 ) : (
                   <div className="h-14 bg-black/90 backdrop-blur-md text-white flex items-center justify-between px-4 border-b border-gray-800 sticky top-0 z-10">
                       <span className="font-bold text-lg tracking-tight capitalize">
@@ -545,7 +573,7 @@ const AgentSimulation: React.FC<Props> = ({ posts, onReset }) => {
                 )}
 
                 {/* Feed Content */}
-                <div className={`flex-1 overflow-y-auto scrollbar-hide bg-black text-white ${isTikTok ? 'snap-y snap-mandatory' : 'pb-20'}`}>
+                <div className={`flex-1 overflow-y-auto scrollbar-hide bg-black text-white ${isImmersiveVideo ? 'snap-y snap-mandatory' : 'pb-20'}`}>
                     {feedPosts.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full text-gray-500 p-8 text-center">
                         <Box className="w-12 h-12 mb-4 opacity-50" />
@@ -555,8 +583,8 @@ const AgentSimulation: React.FC<Props> = ({ posts, onReset }) => {
                     feedPosts.map((post) => {
                         const metrics = postStats[post.id] || { likes: 0, comments: 0, shares: 0, saves: 0 };
                         
-                        // TIKTOK LAYOUT
-                        if (isTikTok) {
+                        // IMMERSIVE LAYOUT (TIKTOK / YOUTUBE SHORTS)
+                        if (isImmersiveVideo) {
                             return (
                                 <div key={post.id} className="relative w-full h-full snap-start bg-gray-900 border-b border-gray-800">
                                     {/* Full Screen Media */}
@@ -572,52 +600,85 @@ const AgentSimulation: React.FC<Props> = ({ posts, onReset }) => {
 
                                     {/* Right Sidebar Actions */}
                                     <div className="absolute right-2 bottom-20 flex flex-col items-center gap-6 text-white z-10">
-                                        <div className="relative">
-                                            <div className="w-10 h-10 rounded-full bg-white p-0.5 border border-white overflow-hidden">
-                                                <div className="w-full h-full bg-gradient-to-tr from-purple-500 to-orange-500 flex items-center justify-center text-[8px] font-bold">AI</div>
+                                        {/* Profile Avatar (TikTok style) */}
+                                        {isTikTok && (
+                                            <div className="relative mb-2">
+                                                <div className="w-10 h-10 rounded-full bg-white p-0.5 border border-white overflow-hidden">
+                                                    <div className="w-full h-full bg-gradient-to-tr from-purple-500 to-orange-500 flex items-center justify-center text-[8px] font-bold">{businessInitials}</div>
+                                                </div>
+                                                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-red-500 rounded-full p-0.5">
+                                                    <Plus className="w-3 h-3 text-white" />
+                                                </div>
                                             </div>
-                                            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-red-500 rounded-full p-0.5">
-                                                <Plus className="w-3 h-3 text-white" />
-                                            </div>
-                                        </div>
+                                        )}
 
+                                        {/* Primary Like Action */}
                                         <div className="flex flex-col items-center gap-1">
-                                            <Heart className={`w-8 h-8 drop-shadow-lg ${metrics.likes > 0 ? 'fill-red-500 text-red-500' : 'fill-white/10 text-white'}`} />
+                                            {isYoutube ? (
+                                                <ThumbsUp className={`w-7 h-7 drop-shadow-lg ${metrics.likes > 0 ? 'fill-white text-white' : 'text-white'}`} />
+                                            ) : (
+                                                <Heart className={`w-8 h-8 drop-shadow-lg ${metrics.likes > 0 ? 'fill-red-500 text-red-500' : 'fill-white/10 text-white'}`} />
+                                            )}
                                             <span className="text-xs font-bold drop-shadow-md">{formatNumber(metrics.likes)}</span>
                                         </div>
 
+                                        {/* Dislike (YouTube only) */}
+                                        {isYoutube && (
+                                             <div className="flex flex-col items-center gap-1">
+                                                <ThumbsDown className="w-7 h-7 text-white drop-shadow-lg" />
+                                                <span className="text-xs font-bold drop-shadow-md">Dislike</span>
+                                            </div>
+                                        )}
+
+                                        {/* Comments */}
                                         <div className="flex flex-col items-center gap-1">
-                                            <MessageCircle className="w-8 h-8 fill-white/10 text-white drop-shadow-lg" />
+                                            <MessageCircle className={`fill-white/10 text-white drop-shadow-lg ${isYoutube ? 'w-7 h-7' : 'w-8 h-8'}`} />
                                             <span className="text-xs font-bold drop-shadow-md">{formatNumber(metrics.comments)}</span>
                                         </div>
 
-                                        <div className="flex flex-col items-center gap-1">
-                                            <Bookmark className="w-8 h-8 fill-white/10 text-white drop-shadow-lg" />
-                                            <span className="text-xs font-bold drop-shadow-md">{formatNumber(metrics.saves)}</span>
-                                        </div>
+                                        {/* Bookmark (TikTok Only) */}
+                                        {isTikTok && (
+                                            <div className="flex flex-col items-center gap-1">
+                                                <Bookmark className="w-8 h-8 fill-white/10 text-white drop-shadow-lg" />
+                                                <span className="text-xs font-bold drop-shadow-md">{formatNumber(metrics.saves)}</span>
+                                            </div>
+                                        )}
 
+                                        {/* Share */}
                                         <div className="flex flex-col items-center gap-1">
-                                            <Share2 className="w-8 h-8 fill-white/10 text-white drop-shadow-lg" />
-                                            <span className="text-xs font-bold drop-shadow-md">{formatNumber(metrics.shares)}</span>
+                                            <Share2 className={`fill-white/10 text-white drop-shadow-lg ${isYoutube ? 'w-7 h-7' : 'w-8 h-8'}`} />
+                                            <span className="text-xs font-bold drop-shadow-md">{isYoutube ? 'Share' : formatNumber(metrics.shares)}</span>
                                         </div>
                                         
-                                        <div className="mt-2 animate-spin-slow rounded-full bg-gray-800 p-2 border border-gray-600">
-                                           <div className="w-6 h-6 rounded-full bg-black flex items-center justify-center">
-                                             <Music2 className="w-3 h-3" />
-                                           </div>
-                                        </div>
+                                        {/* Audio (TikTok Only) */}
+                                        {isTikTok && (
+                                            <div className="mt-2 animate-spin-slow rounded-full bg-gray-800 p-2 border border-gray-600">
+                                            <div className="w-6 h-6 rounded-full bg-black flex items-center justify-center">
+                                                <Music2 className="w-3 h-3" />
+                                            </div>
+                                            </div>
+                                        )}
+                                         {/* Sound (Youtube Only) */}
+                                         {isYoutube && (
+                                            <div className="mt-2 w-9 h-9 rounded-md bg-gray-800 border-2 border-white overflow-hidden">
+                                                 <div className="w-full h-full bg-gradient-to-tr from-purple-500 to-orange-500 flex items-center justify-center text-[6px] font-bold">{businessInitials}</div>
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Bottom Info Area */}
                                     <div className="absolute left-4 bottom-4 right-16 text-white z-10 text-left pb-16">
-                                        <div className="font-bold text-md mb-2 drop-shadow-md">@social_agent_ai</div>
+                                        <div className="font-bold text-md mb-2 drop-shadow-md flex items-center gap-2">
+                                            {businessHandle}
+                                            {isYoutube && <span className="text-[10px] bg-red-600 px-2 py-0.5 rounded-full font-bold">SUBSCRIBE</span>}
+                                        </div>
                                         <div className="text-sm opacity-90 leading-tight drop-shadow-md mb-3 line-clamp-2">
                                             {post.generatedCaption} {post.hashtags.map(h => h).join(' ')}
                                         </div>
                                         <div className="text-xs font-bold flex items-center gap-2 mb-2">
                                             <Music2 className="w-3 h-3" /> 
                                             <div className="w-32 overflow-hidden whitespace-nowrap">
-                                                <span className="animate-marquee inline-block">Original Sound - Social Agent AI • Original Sound</span>
+                                                <span className="animate-marquee inline-block">Original Sound - {config.businessName} • Original Sound</span>
                                             </div>
                                         </div>
                                     </div>
@@ -633,10 +694,10 @@ const AgentSimulation: React.FC<Props> = ({ posts, onReset }) => {
                                 <div className="flex items-center gap-2">
                                     <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-400 to-purple-600 p-[2px]">
                                     <div className="w-full h-full rounded-full bg-black flex items-center justify-center text-[10px] font-bold">
-                                        AI
+                                        {businessInitials}
                                     </div>
                                     </div>
-                                    <span className="text-sm font-semibold">social_agent_ai</span>
+                                    <span className="text-sm font-semibold">{businessHandle.substring(1)}</span>
                                 </div>
                                 <MoreHorizontal className="w-5 h-5 text-gray-400" />
                             </div>
@@ -672,7 +733,7 @@ const AgentSimulation: React.FC<Props> = ({ posts, onReset }) => {
 
                             {/* Caption */}
                             <div className="px-3 text-sm">
-                                <span className="font-semibold mr-2">social_agent_ai</span>
+                                <span className="font-semibold mr-2">{businessHandle.substring(1)}</span>
                                 <span className="text-gray-100">{post.generatedCaption}</span>
                                 <div className="mt-1 text-blue-400">
                                     {post.hashtags.map((h, i) => (
@@ -689,8 +750,8 @@ const AgentSimulation: React.FC<Props> = ({ posts, onReset }) => {
                     })
                     )}
                     
-                    {/* End of Feed Indicator (Non-TikTok only) */}
-                    {feedPosts.length > 0 && !isTikTok && (
+                    {/* End of Feed Indicator (Non-Immersive only) */}
+                    {feedPosts.length > 0 && !isImmersiveVideo && (
                         <div className="py-10 text-center text-gray-600 text-xs flex flex-col items-center">
                             <CheckCircle className="w-6 h-6 mb-2 text-gray-700" />
                             You're all caught up
@@ -699,8 +760,9 @@ const AgentSimulation: React.FC<Props> = ({ posts, onReset }) => {
                 </div>
 
                 {/* Bottom Nav Bar */}
-                <div className={`h-16 border-t flex justify-around items-center px-2 z-10 ${isTikTok ? 'bg-black border-gray-800 text-white' : 'bg-black border-gray-800'}`}>
+                <div className={`h-16 border-t flex justify-around items-center px-2 z-10 ${isImmersiveVideo ? 'bg-black border-gray-800 text-white' : 'bg-black border-gray-800'}`}>
                     {isTikTok ? (
+                       // TIKTOK NAV
                        <>
                          <div className="p-2 flex flex-col items-center gap-1 cursor-pointer">
                            <div className="w-5 h-5 bg-white/10 rounded-sm flex items-center justify-center"><Box className="w-3 h-3 text-white" /></div>
@@ -728,6 +790,31 @@ const AgentSimulation: React.FC<Props> = ({ posts, onReset }) => {
                            <User className="w-5 h-5" />
                            <span className="text-[9px]">Profile</span>
                          </div>
+                       </>
+                    ) : isYoutube ? (
+                        // YOUTUBE NAV
+                       <>
+                        <div className="p-2 flex flex-col items-center gap-1 cursor-pointer">
+                           <Home className="w-5 h-5" />
+                           <span className="text-[9px]">Home</span>
+                        </div>
+                        <div className="p-2 flex flex-col items-center gap-1 cursor-pointer font-bold">
+                           <Youtube className="w-5 h-5 text-red-500 fill-current" />
+                           <span className="text-[9px]">Shorts</span>
+                        </div>
+                        <div className="p-0 mx-2 cursor-pointer">
+                           <div className="w-9 h-9 rounded-full border border-gray-400 flex items-center justify-center">
+                             <Plus className="w-5 h-5 text-white" />
+                           </div>
+                        </div>
+                        <div className="p-2 flex flex-col items-center gap-1 cursor-pointer opacity-80">
+                           <Bell className="w-5 h-5" />
+                           <span className="text-[9px]">Subs</span>
+                        </div>
+                        <div className="p-2 flex flex-col items-center gap-1 cursor-pointer opacity-80">
+                           <Library className="w-5 h-5" />
+                           <span className="text-[9px]">You</span>
+                        </div>
                        </>
                     ) : (
                        // Instagram Bottom Nav

@@ -48,7 +48,13 @@ const WorkflowPlanner: React.FC<Props> = ({ config, initialPosts, onBack, onFini
         ? { data: post.uploadedFileBase64, mimeType: post.uploadedFileMimeType }
         : undefined;
 
-      const details = await generatePostContent(post.topic, post.platform, media);
+      // Pass Business Context to Service
+      const details = await generatePostContent(
+        post.topic, 
+        post.platform, 
+        { name: config.businessName, description: config.businessDescription },
+        media
+      );
       
       setPosts(prev => prev.map(p => 
         p.id === postId ? { 
@@ -154,7 +160,7 @@ const WorkflowPlanner: React.FC<Props> = ({ config, initialPosts, onBack, onFini
             <h1 className="text-3xl font-bold text-gray-900">Workflow Planner</h1>
             <p className="text-gray-500 mt-1 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-orange-500"></span>
-              {posts.length} posts • {config.platforms.join(', ')}
+              {posts.length} posts • {config.platforms.join(', ')} • {config.businessName}
             </p>
           </div>
           <div className="text-right">

@@ -1,4 +1,4 @@
-export type Platform = 'Instagram' | 'Tiktok' | 'Threads';
+export type Platform = 'Instagram' | 'Tiktok' | 'Threads' | 'YouTube Shorts';
 export type WorkflowType = 'Plan Posts';
 export type ContentSource = 'AI Generated' | 'Upload';
 export type PostType = 'Photo Post' | 'Reel' | 'Carousel';
@@ -8,6 +8,8 @@ export interface WorkflowConfig {
   postCount: number;
   platforms: Platform[];
   contentSource: ContentSource;
+  businessName: string;
+  businessDescription: string;
 }
 
 export interface PostDraft {

@@ -8,19 +8,25 @@ const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
 export const generatePostContent = async (
   topic: string, 
   platform: Platform, 
+  businessContext: { name: string, description: string },
   media?: { data: string, mimeType: string }
 ) => {
   const model = "gemini-2.5-flash";
 
   const promptText = `
-    You are an expert Social Media Manager for ${platform}.
+    You are an expert Social Media Manager for ${platform} representing the business "${businessContext.name}".
+    
+    Business Description:
+    ${businessContext.description}
+
+    Task:
     ${topic ? `The user has provided the topic/context: "${topic}".` : 'Analyze the provided media to create a post.'}
-    ${media ? 'Please analyze the attached media (image or video) deeply to create relevant content.' : ''}
+    ${media ? 'Please analyze the attached media (image or video) deeply to create relevant content that aligns with the business brand.' : ''}
     
     Please generate:
     1. A suggested post type (Photo Post or Reel). If a video is provided, strictly select 'Reel'.
     2. A short visual description or context (captionStarter). If media is provided, describe what is seen in the media.
-    3. An engaging, trend-aware caption with emojis that matches the content.
+    3. An engaging, trend-aware caption with emojis that matches the content and the business voice.
     4. A list of 5-10 relevant hashtags.
     
     Return response in strictly valid JSON.
