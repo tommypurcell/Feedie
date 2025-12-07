@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { PostDraft, WorkflowConfig } from '../types';
-import { generateImageForPost, generatePostContent } from '../services/geminiService';
+import { generateImageForPost, generatePostContent, generateVideoForPost } from '../services/geminiService';
 import { 
   ArrowLeft, 
   RefreshCw, 
@@ -15,7 +15,8 @@ import {
   Type as TypeIcon,
   Sparkles,
   FileVideo,
-  Clock
+  Clock,
+  Film
 } from 'lucide-react';
 
 interface Props {
@@ -86,6 +87,41 @@ const WorkflowPlanner: React.FC<Props> = ({ config, initialPosts, onBack, onFini
     setPosts(prev => prev.map(p => 
       p.id === postId ? { ...p, imageUrl: newUrl, mediaType: 'image', isGeneratingImage: false } : p
     ));
+  };
+
+  const handleGenerateVideo = async (postId: number) => {
+    const post = posts.find(p => p.id === postId);
+    if (!post || !post.topic.trim()) {
+      alert("Please enter a topic first.");
+      return;
+    }
+
+    // Check for Paid API Key required for Veo
+    if ((window as any).aistudio) {
+        const hasKey = await (window as any).aistudio.hasSelectedApiKey();
+        if (!hasKey) {
+            try {
+                await (window as any).aistudio.openSelectKey();
+                // Proceed assuming key selection was successful (handling race condition)
+            } catch (err) {
+                console.error("Key selection failed/cancelled", err);
+                return;
+            }
+        }
+    }
+
+    setPosts(prev => prev.map(p => p.id === postId ? { ...p, isGeneratingVideo: true } : p));
+    
+    try {
+        const newUrl = await generateVideoForPost(post);
+        setPosts(prev => prev.map(p => 
+            p.id === postId ? { ...p, imageUrl: newUrl, mediaType: 'video', isGeneratingVideo: false } : p
+        ));
+    } catch (error) {
+        console.error("Video Generation Error", error);
+        alert("Failed to generate video. Please try again.");
+        setPosts(prev => prev.map(p => p.id === postId ? { ...p, isGeneratingVideo: false } : p));
+    }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, postId: number) => {
@@ -261,6 +297,8 @@ const WorkflowPlanner: React.FC<Props> = ({ config, initialPosts, onBack, onFini
                             src={currentPost.imageUrl} 
                             className="w-full h-full object-contain"
                             controls
+                            loop
+                            autoPlay
                         />
                          <div className="absolute top-4 left-4 bg-black/50 text-white px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 backdrop-blur-md">
                              <FileVideo className="w-3.5 h-3.5" /> Video Post
@@ -295,10 +333,12 @@ const WorkflowPlanner: React.FC<Props> = ({ config, initialPosts, onBack, onFini
              <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 bg-slate-50 relative p-6">
                 
                 {/* AI Loading State */}
-                {currentPost.isGeneratingImage ? (
+                {currentPost.isGeneratingImage || currentPost.isGeneratingVideo ? (
                     <div className="flex flex-col items-center animate-pulse">
                         <Wand2 className="w-10 h-10 mb-2 text-orange-400 animate-spin" />
-                        <span className="text-sm font-medium text-orange-500">AI is crafting your image...</span>
+                        <span className="text-sm font-medium text-orange-500">
+                            {currentPost.isGeneratingVideo ? 'AI is creating your video (this may take a minute)...' : 'AI is crafting your image...'}
+                        </span>
                     </div>
                 ) : (
                     /* Initial Empty State Options */
@@ -309,19 +349,42 @@ const WorkflowPlanner: React.FC<Props> = ({ config, initialPosts, onBack, onFini
                                     <ImageIcon className="w-16 h-16 mx-auto mb-2 opacity-20" />
                                     <p className="text-gray-500 text-sm">
                                       {currentPost.topic 
-                                        ? `Ready to generate image for "${currentPost.topic}"`
+                                        ? `Ready to generate content for "${currentPost.topic}"`
                                         : "Enter a topic above first."}
                                     </p>
                                 </div>
                                 <div className="flex flex-col gap-3">
-                                  <button 
-                                      onClick={() => handleGenerateImage(currentPost.id)}
-                                      disabled={!currentPost.topic}
-                                      className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-200 disabled:text-gray-400 text-white px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 mx-auto transition-all shadow-lg hover:scale-105"
-                                  >
-                                      <Wand2 className="w-5 h-5" />
-                                      Generate AI Image
-                                  </button>
+                                  {/* Dynamic Button based on Post Type */}
+                                  {currentPost.type === 'Reel' ? (
+                                    <button 
+                                        onClick={() => handleGenerateVideo(currentPost.id)}
+                                        disabled={!currentPost.topic}
+                                        className="bg-red-600 hover:bg-red-700 disabled:bg-gray-200 disabled:text-gray-400 text-white px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 mx-auto transition-all shadow-lg hover:scale-105 w-full max-w-[280px]"
+                                    >
+                                        <Film className="w-5 h-5" />
+                                        Generate AI Video
+                                    </button>
+                                  ) : (
+                                    <button 
+                                        onClick={() => handleGenerateImage(currentPost.id)}
+                                        disabled={!currentPost.topic}
+                                        className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-200 disabled:text-gray-400 text-white px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 mx-auto transition-all shadow-lg hover:scale-105 w-full max-w-[280px]"
+                                    >
+                                        <Wand2 className="w-5 h-5" />
+                                        Generate AI Image
+                                    </button>
+                                  )}
+                                  
+                                  {/* Alternative Option Link */}
+                                  {currentPost.type === 'Reel' && (
+                                     <button 
+                                        onClick={() => handleUpdatePost('type', 'Photo Post')} 
+                                        className="text-xs text-gray-400 hover:text-indigo-600 underline"
+                                     >
+                                        Switch to Photo Post to generate image instead
+                                     </button>
+                                  )}
+
                                   <div className="text-xs text-gray-400 font-medium divider flex items-center gap-2 justify-center my-1">
                                     <span className="h-px w-8 bg-gray-200"></span> OR <span className="h-px w-8 bg-gray-200"></span>
                                   </div>
@@ -372,7 +435,14 @@ const WorkflowPlanner: React.FC<Props> = ({ config, initialPosts, onBack, onFini
                         {['Photo Post', 'Reel'].map((type) => (
                         <button
                             key={type}
-                            onClick={() => handleUpdatePost('type', type)}
+                            onClick={() => {
+                                handleUpdatePost('type', type);
+                                // Clear image if switching types to avoid confusion between photo/video
+                                if ((type === 'Reel' && currentPost.mediaType === 'image') || 
+                                    (type === 'Photo Post' && currentPost.mediaType === 'video')) {
+                                    // Optional: handleUpdatePost('imageUrl', undefined);
+                                }
+                            }}
                             className={`flex-1 py-2 text-xs font-medium rounded-md transition-all ${
                             currentPost.type === type 
                                 ? 'bg-white text-orange-600 shadow-sm ring-1 ring-black/5' 
@@ -439,9 +509,10 @@ const WorkflowPlanner: React.FC<Props> = ({ config, initialPosts, onBack, onFini
                 <h4 className="text-blue-800 font-semibold text-sm mb-2">Workflow Guide</h4>
                 <ul className="text-blue-600 text-xs leading-5 list-disc pl-4 space-y-1">
                   <li>Enter your main topic <strong>OR</strong> upload a file.</li>
-                  <li>Click <strong>Analyze & Generate</strong> to let AI watch the video/image and write the caption.</li>
+                  <li>Select <strong>Post Type</strong> (Reel or Photo Post).</li>
+                  <li>Click <strong>Generate AI Video/Image</strong> to create visual content.</li>
+                  <li>Click <strong>Generate</strong> (top right) to write captions.</li>
                   <li>Set your preferred <strong>Scheduled Time</strong>.</li>
-                  <li>Review and move to the next post.</li>
                 </ul>
              </div>
           </div>

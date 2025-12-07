@@ -192,14 +192,32 @@ const AgentSimulation: React.FC<Props> = ({ posts, onReset, config }) => {
     const user = users[Math.floor(Math.random() * users.length)];
     const targetPlatform = distinctPlatforms[Math.floor(Math.random() * distinctPlatforms.length)];
     
-    const openers = [
-        "Love the new post! 🔥",
-        "Where did you get that?",
-        "This is exactly what I needed today.",
-        "Collaboration?",
-        "Can you send me the link?"
+    // Scenarios ensuring logical replies
+    const scenarios = [
+        {
+            opener: "Love the new post! 🔥",
+            replies: ["Thanks so much! glad you liked it 🙌", "Thank you for the support! ❤️", "Means a lot!"]
+        },
+        {
+            opener: "Where did you get that?",
+            replies: ["Check the link in bio!", "I'll DM you the details.", "It's available on our site!"]
+        },
+        {
+            opener: "This is exactly what I needed today.",
+            replies: ["Appreciate the support! ❤️", "So glad to hear that! 🙌", "Happy we could help!"]
+        },
+        {
+            opener: "Collaboration?",
+            replies: ["Let's connect soon.", "Send us an email!", "We'd love to chat!"]
+        },
+        {
+            opener: "Can you send me the link?",
+            replies: ["DM sent!", "Check your inbox! 📨", "Sent it over!"]
+        }
     ];
-    const opener = openers[Math.floor(Math.random() * openers.length)];
+
+    const scenario = scenarios[Math.floor(Math.random() * scenarios.length)];
+    const opener = scenario.opener;
 
     const threadId = Math.random().toString(36).substr(2, 9);
     
@@ -223,16 +241,9 @@ const AgentSimulation: React.FC<Props> = ({ posts, onReset, config }) => {
     setConversations(prev => [newThread, ...prev].slice(0, 8)); // Keep last 8 threads visible
     addLog(`📩 New DM from ${user.handle} on ${targetPlatform}`, 'dm');
 
-    // Simulate Agent Reply
+    // Simulate Agent Reply using the selected scenario context
     setTimeout(() => {
-        const replies = [
-            "Thanks so much! glad you liked it 🙌",
-            "DM sent!",
-            "Appreciate the support! ❤️",
-            "Let's connect soon.",
-            "Check the link in bio!"
-        ];
-        const reply = replies[Math.floor(Math.random() * replies.length)];
+        const reply = scenario.replies[Math.floor(Math.random() * scenario.replies.length)];
 
         setConversations(prev => prev.map(t => {
             if (t.id === threadId) {

@@ -1,16 +1,14 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { WorkflowConfig, PostDraft, Platform } from "../types";
 
-// Initialize the client
-// NOTE: In a real app, ensure process.env.API_KEY is available.
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
-
 export const generatePostContent = async (
   topic: string, 
   platform: Platform, 
   businessContext: { name: string, description: string },
   media?: { data: string, mimeType: string }
 ) => {
+  // Initialize client per request to ensure latest key is used
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
   const model = "gemini-2.5-flash";
 
   const promptText = `
@@ -74,12 +72,11 @@ export const generatePostContent = async (
 
 // Kept for reference, but currently bypassed in App.tsx
 export const generatePostPlan = async (config: WorkflowConfig): Promise<PostDraft[]> => {
-  const model = "gemini-2.5-flash";
-  // ... existing implementation if needed for other flows ...
   return []; 
 };
 
 export const generateImageForPost = async (post: PostDraft): Promise<string> => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
   try {
     // Using gemini-2.5-flash-image for general image generation as per guidelines
     const model = 'gemini-2.5-flash-image';
@@ -116,5 +113,52 @@ export const generateImageForPost = async (post: PostDraft): Promise<string> => 
   } catch (error) {
     console.error("Error generating image:", error);
     return `https://picsum.photos/800/800?random=${post.id}`;
+  }
+};
+
+export const generateVideoForPost = async (post: PostDraft): Promise<string> => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+  try {
+    const model = 'veo-3.1-fast-generate-preview';
+    const context = post.captionStarter || post.topic;
+    
+    // Create a descriptive prompt for Veo
+    const prompt = `
+      Create a high quality vertical video for social media (Reels/TikTok).
+      Subject: ${post.topic}.
+      Details: ${context}.
+      Style: Cinematic, professional, trending, good lighting, high resolution, photorealistic.
+      Aspect Ratio: 9:16 (Vertical).
+    `;
+
+    let operation = await ai.models.generateVideos({
+      model: model,
+      prompt: prompt,
+      config: {
+        numberOfVideos: 1,
+        resolution: '720p',
+        aspectRatio: '9:16'
+      }
+    });
+
+    // Poll for completion
+    while (!operation.done) {
+      await new Promise(resolve => setTimeout(resolve, 5000)); // Poll every 5s
+      operation = await ai.operations.getVideosOperation({operation: operation});
+    }
+
+    const videoUri = operation.response?.generatedVideos?.[0]?.video?.uri;
+    if (!videoUri) throw new Error("No video URI returned from Veo");
+
+    // Fetch the actual video content using the API key
+    const response = await fetch(`${videoUri}&key=${process.env.API_KEY}`);
+    const blob = await response.blob();
+    
+    // Create a local object URL for the video blob
+    return URL.createObjectURL(blob);
+
+  } catch (error) {
+    console.error("Error generating video:", error);
+    throw error;
   }
 };

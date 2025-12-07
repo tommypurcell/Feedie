@@ -25,6 +25,7 @@ export interface PostDraft {
   uploadedFileBase64?: string; // Raw base64 data for AI API
   uploadedFileMimeType?: string; // Mime type for AI API
   isGeneratingImage: boolean;
+  isGeneratingVideo?: boolean;
   isGeneratingText?: boolean;
   scheduledTime: string;
 }
