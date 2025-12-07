@@ -3,6 +3,12 @@ export type WorkflowType = 'Plan Posts';
 export type ContentSource = 'AI Generated' | 'Upload';
 export type PostType = 'Photo Post' | 'Reel' | 'Carousel';
 
+export interface BusinessProfile {
+  id: string;
+  name: string;
+  description: string;
+}
+
 export interface WorkflowConfig {
   workflowType: WorkflowType;
   postCount: number;

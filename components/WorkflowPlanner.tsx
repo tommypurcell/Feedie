@@ -60,7 +60,7 @@ const WorkflowPlanner: React.FC<Props> = ({ config, initialPosts, onBack, onFini
       setPosts(prev => prev.map(p => 
         p.id === postId ? { 
           ...p, 
-          type: details.type,
+          type: details.type as any,
           captionStarter: details.captionStarter,
           generatedCaption: details.generatedCaption,
           hashtags: details.hashtags,
@@ -102,7 +102,6 @@ const WorkflowPlanner: React.FC<Props> = ({ config, initialPosts, onBack, onFini
         if (!hasKey) {
             try {
                 await (window as any).aistudio.openSelectKey();
-                // Proceed assuming key selection was successful (handling race condition)
             } catch (err) {
                 console.error("Key selection failed/cancelled", err);
                 return;
@@ -128,22 +127,15 @@ const WorkflowPlanner: React.FC<Props> = ({ config, initialPosts, onBack, onFini
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Reset input value to allow re-uploading the same file
     e.target.value = '';
-
-    // Create object URL for preview
     const url = URL.createObjectURL(file);
     const isVideo = file.type.startsWith('video');
 
-    // Read file as Base64 for API
     const reader = new FileReader();
     reader.onloadend = () => {
         const result = reader.result as string;
-        // Check if result is valid data URI
         if (!result || !result.includes(',')) return;
-        
         const base64String = result.split(',')[1];
-        
         setPosts(prev => prev.map(p => 
             p.id === postId ? { 
                 ...p, 
@@ -168,7 +160,6 @@ const WorkflowPlanner: React.FC<Props> = ({ config, initialPosts, onBack, onFini
     if (currentIdx < posts.length - 1) {
         setCurrentIdx(c => c + 1);
     } else {
-        // Trigger finish when on the last post
         onFinish(posts);
     }
   };
@@ -289,6 +280,33 @@ const WorkflowPlanner: React.FC<Props> = ({ config, initialPosts, onBack, onFini
 
         {/* Visual Preview Area */}
         <div className="w-full aspect-video sm:aspect-[2/1] bg-gray-100 rounded-2xl overflow-hidden relative group border border-gray-200">
+           
+           {/* TYPE SELECTOR (Overlay) */}
+           <div className="absolute top-4 left-4 z-20 bg-white/90 backdrop-blur-md p-1 rounded-lg shadow-sm border border-gray-200 flex gap-1">
+                {['Photo Post', 'Reel'].map((type) => (
+                    <button
+                        key={type}
+                        onClick={() => {
+                            handleUpdatePost('type', type);
+                            // Clear image if switching types to avoid confusion
+                            if ((type === 'Reel' && currentPost.mediaType === 'image') || 
+                                (type === 'Photo Post' && currentPost.mediaType === 'video')) {
+                                // handleUpdatePost('imageUrl', undefined);
+                            }
+                        }}
+                        className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${
+                        currentPost.type === type 
+                            ? 'bg-orange-500 text-white shadow-sm' 
+                            : 'text-gray-600 hover:bg-gray-200'
+                        }`}
+                    >
+                        {type === 'Reel' && <Film className="w-3 h-3 inline mr-1" />}
+                        {type === 'Photo Post' && <ImageIcon className="w-3 h-3 inline mr-1" />}
+                        {type}
+                    </button>
+                ))}
+           </div>
+
            {currentPost.imageUrl ? (
              <>
                 {currentPost.mediaType === 'video' ? (
@@ -330,7 +348,7 @@ const WorkflowPlanner: React.FC<Props> = ({ config, initialPosts, onBack, onFini
                 </button>
              </>
            ) : (
-             <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 bg-slate-50 relative p-6">
+             <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 bg-slate-50 relative p-6 pt-16">
                 
                 {/* AI Loading State */}
                 {currentPost.isGeneratingImage || currentPost.isGeneratingVideo ? (
@@ -375,16 +393,6 @@ const WorkflowPlanner: React.FC<Props> = ({ config, initialPosts, onBack, onFini
                                     </button>
                                   )}
                                   
-                                  {/* Alternative Option Link */}
-                                  {currentPost.type === 'Reel' && (
-                                     <button 
-                                        onClick={() => handleUpdatePost('type', 'Photo Post')} 
-                                        className="text-xs text-gray-400 hover:text-indigo-600 underline"
-                                     >
-                                        Switch to Photo Post to generate image instead
-                                     </button>
-                                  )}
-
                                   <div className="text-xs text-gray-400 font-medium divider flex items-center gap-2 justify-center my-1">
                                     <span className="h-px w-8 bg-gray-200"></span> OR <span className="h-px w-8 bg-gray-200"></span>
                                   </div>
@@ -429,32 +437,6 @@ const WorkflowPlanner: React.FC<Props> = ({ config, initialPosts, onBack, onFini
             
             {/* Post Type & Time Row */}
             <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Post Type</label>
-                    <div className="flex bg-gray-100 p-1 rounded-lg">
-                        {['Photo Post', 'Reel'].map((type) => (
-                        <button
-                            key={type}
-                            onClick={() => {
-                                handleUpdatePost('type', type);
-                                // Clear image if switching types to avoid confusion between photo/video
-                                if ((type === 'Reel' && currentPost.mediaType === 'image') || 
-                                    (type === 'Photo Post' && currentPost.mediaType === 'video')) {
-                                    // Optional: handleUpdatePost('imageUrl', undefined);
-                                }
-                            }}
-                            className={`flex-1 py-2 text-xs font-medium rounded-md transition-all ${
-                            currentPost.type === type 
-                                ? 'bg-white text-orange-600 shadow-sm ring-1 ring-black/5' 
-                                : 'text-gray-500 hover:text-gray-700'
-                            }`}
-                        >
-                            {type}
-                        </button>
-                        ))}
-                    </div>
-                </div>
-
                 <div className="space-y-1.5">
                     <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Scheduled Time</label>
                     <div className="relative">
@@ -509,8 +491,8 @@ const WorkflowPlanner: React.FC<Props> = ({ config, initialPosts, onBack, onFini
                 <h4 className="text-blue-800 font-semibold text-sm mb-2">Workflow Guide</h4>
                 <ul className="text-blue-600 text-xs leading-5 list-disc pl-4 space-y-1">
                   <li>Enter your main topic <strong>OR</strong> upload a file.</li>
-                  <li>Select <strong>Post Type</strong> (Reel or Photo Post).</li>
-                  <li>Click <strong>Generate AI Video/Image</strong> to create visual content.</li>
+                  <li>Use the buttons in the preview area to switch between <strong>Photo Post</strong> and <strong>Reel</strong>.</li>
+                  <li>Click <strong>Generate AI Video</strong> when Reel is selected.</li>
                   <li>Click <strong>Generate</strong> (top right) to write captions.</li>
                   <li>Set your preferred <strong>Scheduled Time</strong>.</li>
                 </ul>

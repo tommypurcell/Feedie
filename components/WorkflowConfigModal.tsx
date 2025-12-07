@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { WorkflowConfig, Platform, ContentSource } from '../types';
+import React, { useState, useEffect } from 'react';
+import { WorkflowConfig, Platform, ContentSource, BusinessProfile } from '../types';
 import { 
   Sparkles, 
   Upload,
@@ -7,7 +7,10 @@ import {
   X,
   Building2,
   Settings,
-  ChevronRight
+  ChevronRight,
+  Save,
+  User,
+  Plus
 } from 'lucide-react';
 
 interface Props {
@@ -25,6 +28,16 @@ const WorkflowConfigModal: React.FC<Props> = ({ onStart }) => {
   // Business Profile State
   const [businessName, setBusinessName] = useState('');
   const [businessDescription, setBusinessDescription] = useState('');
+  const [savedProfiles, setSavedProfiles] = useState<BusinessProfile[]>([]);
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
+
+  // Load profiles on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('social_agent_profiles');
+    if (saved) {
+      setSavedProfiles(JSON.parse(saved));
+    }
+  }, []);
 
   const togglePlatform = (p: Platform) => {
     setPlatforms(prev => 
@@ -32,6 +45,33 @@ const WorkflowConfigModal: React.FC<Props> = ({ onStart }) => {
         ? prev.filter(item => item !== p)
         : [...prev, p]
     );
+  };
+
+  const handleSaveProfile = () => {
+    if (!businessName.trim()) return;
+
+    const newProfile: BusinessProfile = {
+        id: Date.now().toString(),
+        name: businessName,
+        description: businessDescription
+    };
+
+    const updated = [...savedProfiles, newProfile];
+    setSavedProfiles(updated);
+    localStorage.setItem('social_agent_profiles', JSON.stringify(updated));
+    setSelectedProfileId(newProfile.id);
+  };
+
+  const handleSelectProfile = (profile: BusinessProfile) => {
+      setBusinessName(profile.name);
+      setBusinessDescription(profile.description);
+      setSelectedProfileId(profile.id);
+  };
+
+  const handleNewProfile = () => {
+      setBusinessName('');
+      setBusinessDescription('');
+      setSelectedProfileId(null);
   };
 
   const handleStart = () => {
@@ -99,6 +139,36 @@ const WorkflowConfigModal: React.FC<Props> = ({ onStart }) => {
           
           {activeTab === 'profile' && (
              <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                
+                {/* Saved Profiles List */}
+                {savedProfiles.length > 0 && (
+                    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
+                        <button 
+                            onClick={handleNewProfile}
+                            className={`shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium border transition-colors ${
+                                selectedProfileId === null 
+                                ? 'bg-orange-100 border-orange-200 text-orange-800' 
+                                : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                            }`}
+                        >
+                            <Plus className="w-3 h-3" /> New
+                        </button>
+                        {savedProfiles.map(p => (
+                            <button
+                                key={p.id}
+                                onClick={() => handleSelectProfile(p)}
+                                className={`shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium border transition-colors ${
+                                    selectedProfileId === p.id 
+                                    ? 'bg-blue-100 border-blue-200 text-blue-800' 
+                                    : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                                }`}
+                            >
+                                <User className="w-3 h-3" /> {p.name}
+                            </button>
+                        ))}
+                    </div>
+                )}
+
                 <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Business Name</label>
                     <input 
@@ -120,6 +190,16 @@ const WorkflowConfigModal: React.FC<Props> = ({ onStart }) => {
                     />
                     <p className="text-xs text-gray-400 mt-2">The AI will use this to tailor captions and hashtags to your brand.</p>
                 </div>
+                
+                {/* Save Button */}
+                {!selectedProfileId && businessName && (
+                    <button 
+                        onClick={handleSaveProfile}
+                        className="flex items-center gap-2 text-sm text-blue-600 font-medium hover:text-blue-800 transition-colors"
+                    >
+                        <Save className="w-4 h-4" /> Save this profile for later
+                    </button>
+                )}
              </div>
           )}
 
